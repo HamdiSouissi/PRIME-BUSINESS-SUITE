@@ -48,7 +48,7 @@ export default function FacturesPage() {
         champs={[
           { name: "client", label: "Client", type: "select", optionsUrl: "invoicing/clients/", required: true },
           { name: "issue_date", label: "Date d'émission", type: "date", required: true },
-          { name: "due_date", label: "Échéance", type: "date" },
+          { name: "due_date", label: "Échéance", type: "date", required: true },
           { name: "notes", label: "Notes", type: "textarea" },
         ]}
         actions={(f: any) => (

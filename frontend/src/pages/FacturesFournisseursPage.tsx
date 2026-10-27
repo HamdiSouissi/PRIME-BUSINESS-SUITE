@@ -7,8 +7,8 @@ import { toast } from "sonner";
 import { CheckCircle2 } from "lucide-react";
 
 const STATUTS: Record<string, any> = {
-  brouillon: "muted", a_valider: "warning", validee: "success", partiellement_payee: "warning",
-  payee: "success", en_retard: "danger", refusee: "danger",
+  recue: "muted", a_valider: "warning", validee: "success", partielle: "warning",
+  payee: "success", en_retard: "danger", litige: "danger",
 };
 
 export default function FacturesFournisseursPage() {
@@ -30,20 +30,20 @@ export default function FacturesFournisseursPage() {
         titre="Factures fournisseurs"
         endpoint="invoicing/supplier-invoices/"
         colonnes={[
-          { key: "reference", label: "Réf." },
+          { key: "supplier_reference", label: "Réf." },
           { key: "supplier_name", label: "Fournisseur" },
-          { key: "issue_date", label: "Émise le" },
+          { key: "invoice_date", label: "Facturée le" },
           { key: "due_date", label: "Échéance" },
           { key: "total_ttc", label: "TTC" },
-          { key: "status", label: "Statut", render: (f: any) => <Badge variant={STATUTS[f.status] ?? "muted"}>{f.status}</Badge> },
+          { key: "status", label: "Statut", render: (f: any) => <Badge variant={STATUTS[f.status] ?? "muted"}>{f.status_label ?? f.status}</Badge> },
         ]}
         champs={[
           { name: "supplier", label: "Fournisseur", type: "select", optionsUrl: "invoicing/suppliers/", required: true },
-          { name: "reference", label: "Référence fournisseur", required: true },
-          { name: "issue_date", label: "Date d'émission", type: "date", required: true },
+          { name: "supplier_reference", label: "Référence fournisseur" },
+          { name: "invoice_date", label: "Date de facture", type: "date", required: true },
+          { name: "received_date", label: "Date de réception", type: "date" },
           { name: "due_date", label: "Échéance", type: "date" },
-          { name: "total_ht", label: "Total HT", type: "number", step: "0.01", required: true },
-          { name: "total_tva", label: "Total TVA", type: "number", step: "0.01" },
+          { name: "expense_account", label: "Compte de charge" },
         ]}
         actions={(f: any) => f.status === "a_valider" ? (
           <Button size="icon" variant="ghost" title="Valider"

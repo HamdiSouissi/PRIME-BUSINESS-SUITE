@@ -80,6 +80,33 @@ def test_rapprochement_montant_different_refuse(company, compte, comptable_user)
     assert exc.value.code == "montant_different"
 
 
+def test_creation_transaction_api_calcule_empreinte(company, compte, admin_user, api_client):
+    """Une saisie directe via l'API doit calculer le dedupe_hash (NOT NULL)."""
+    api_client.force_authenticate(admin_user)
+    payload = {
+        "bank_account": compte.id, "date": "2026-03-10",
+        "label": "Virement reçu", "amount": "850.00",
+    }
+    r = api_client.post("/api/treasury/transactions/", payload, format="json")
+    assert r.status_code == 201, r.content
+    txn = BankTransaction.objects.get(id=r.json()["id"])
+    assert txn.dedupe_hash == BankTransaction.compute_hash(
+        compte.id, txn.date, "Virement reçu", Decimal("850.00")
+    )
+
+
+def test_transaction_api_doublon_refusee(company, compte, admin_user, api_client):
+    api_client.force_authenticate(admin_user)
+    payload = {
+        "bank_account": compte.id, "date": "2026-03-11",
+        "label": "Prélèvement", "amount": "-45.00",
+    }
+    r1 = api_client.post("/api/treasury/transactions/", payload, format="json")
+    assert r1.status_code == 201
+    r2 = api_client.post("/api/treasury/transactions/", payload, format="json")
+    assert r2.status_code == 400
+
+
 def test_previsionnel_structure(company, compte):
     client = Client.objects.create(company=company, code="C1", name="Client")
     invoice = Invoice.objects.create(

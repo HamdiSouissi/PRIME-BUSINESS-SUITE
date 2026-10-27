@@ -26,6 +26,22 @@ class BankTransactionSerializer(serializers.ModelSerializer):
         fields = "__all__"
         read_only_fields = ("company", "dedupe_hash", "reconciled", "reconciled_by", "reconciled_at")
 
+    def create(self, validated_data):
+        # L'empreinte de déduplication est normalement produite par l'import CSV ;
+        # pour une saisie directe via l'API, on la calcule ici pour éviter une
+        # violation NOT NULL tout en conservant l'unicité (compte, empreinte).
+        account = validated_data["bank_account"]
+        empreinte = BankTransaction.compute_hash(
+            account.id, validated_data["date"],
+            validated_data["label"], validated_data["amount"],
+        )
+        if BankTransaction.objects.filter(bank_account=account, dedupe_hash=empreinte).exists():
+            raise serializers.ValidationError(
+                "Cette opération existe déjà pour ce compte (doublon détecté)."
+            )
+        validated_data["dedupe_hash"] = empreinte
+        return super().create(validated_data)
+
     def get_payment_label(self, obj):
         if obj.payment:
             if obj.payment.invoice:

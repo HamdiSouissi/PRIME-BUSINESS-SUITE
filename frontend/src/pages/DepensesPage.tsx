@@ -15,9 +15,8 @@ export default function DepensesPage() {
   const qc = useQueryClient();
   const refresh = () => qc.invalidateQueries({ queryKey: ["expenses/reports/"] });
 
-  const agir = useMutation<any, unknown, { id: number; act: string; motif?: string }>({
-    mutationFn: ({ id, act, motif }: { id: number; act: string; motif?: string }) =>
-      api.post(`expenses/reports/${id}/${act}/`, motif ? { motif } : {}),
+  const agir = useMutation<any, unknown, { id: number; act: string; payload?: Record<string, string> }>({
+    mutationFn: ({ id, act, payload }) => api.post(`expenses/reports/${id}/${act}/`, payload ?? {}),
     onSuccess: (_d, v) => { toast.success("Action effectuée."); refresh(); },
     onError: notifierErreur,
   });
@@ -35,16 +34,14 @@ export default function DepensesPage() {
         colonnes={[
           { key: "employee_name", label: "Salarié" },
           { key: "title", label: "Intitulé" },
-          { key: "period", label: "Période" },
-          { key: "total", label: "Total (€)" },
-          { key: "status", label: "Statut", render: (r: any) => <Badge variant={STATUTS[r.status] ?? "muted"}>{r.status}</Badge> },
+          { key: "total_amount", label: "Total (€)" },
+          { key: "status", label: "Statut", render: (r: any) => <Badge variant={STATUTS[r.status] ?? "muted"}>{r.status_label ?? r.status}</Badge> },
         ]}
         champs={[
           { name: "title", label: "Intitulé", required: true },
-          { name: "period", label: "Période (ex. 10/2026)", required: true },
-          { name: "employee", label: "Salarié", type: "select", optionsUrl: "hr/employees/" },
+          { name: "employee", label: "Salarié", type: "select", optionsUrl: "hr/employees/", required: true },
         ]}
-        actions={(r: any, refresh) => (
+        actions={(r: any) => (
           <>
             {r.status === "brouillon" && (
               <Button size="icon" variant="ghost" title="Soumettre"
@@ -55,13 +52,13 @@ export default function DepensesPage() {
             {r.status === "soumise" && (
               <>
                 <Button size="icon" variant="ghost" title="Valider"
-                  onClick={() => agir.mutate({ id: r.id, act: "decision" })}>
+                  onClick={() => agir.mutate({ id: r.id, act: "decision", payload: { decision: "validee" } })}>
                   <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                 </Button>
                 <Button size="icon" variant="ghost" title="Refuser"
                   onClick={() => {
-                    const motif = window.prompt("Motif de refus (obligatoire) :");
-                    if (motif) agir.mutate({ id: r.id, act: "decision", motif: `REFUS:${motif}` });
+                    const commentaire = window.prompt("Motif de refus (obligatoire) :");
+                    if (commentaire) agir.mutate({ id: r.id, act: "decision", payload: { decision: "refusee", commentaire } });
                   }}>
                   <XCircle className="h-4 w-4 text-destructive" />
                 </Button>

@@ -79,9 +79,10 @@ export default function TresoreriePage() {
               ]}
               champs={[
                 { name: "label", label: "Libellé", required: true },
-                { name: "bank_name", label: "Banque", required: true },
+                { name: "bank_name", label: "Banque" },
                 { name: "iban", label: "IBAN" },
                 { name: "bic", label: "BIC" },
+                { name: "currency", label: "Devise" },
               ]}
             />
           ),
@@ -94,7 +95,7 @@ export default function TresoreriePage() {
               description="Import CSV avec déduplication. Rapprochement via l'action dédiée côté API."
               endpoint="treasury/transactions/"
               colonnes={[
-                { key: "bank_account_name", label: "Compte" }, { key: "date", label: "Date" },
+                { key: "bank_account_label", label: "Compte" }, { key: "date", label: "Date" },
                 { key: "label", label: "Libellé" }, { key: "amount", label: "Montant" },
                 { key: "reconciled", label: "Rapprochée", render: (t: any) => <Badge variant={t.reconciled ? "success" : "warning"}>{t.reconciled ? "Oui" : "Non"}</Badge> },
               ]}

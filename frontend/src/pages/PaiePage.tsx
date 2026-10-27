@@ -12,8 +12,16 @@ import { fmtEuro } from "@/lib/utils";
 import { toast } from "sonner";
 
 const STATUTS: Record<string, any> = {
-  brouillon: "muted", simulee: "info", validee: "success", cloturee: "warning", payee: "success",
+  preparation: "muted",
+  controle: "info",
+  simulation: "info",
+  attente_validation: "warning",
+  valide: "success",
+  cloture: "muted",
 };
+
+const STATUTS_NON_CLOTURES = ["preparation", "controle", "simulation", "attente_validation"];
+const STATUTS_VALIDABLES = ["controle", "simulation", "attente_validation"];
 
 function useRuns() {
   return useQuery({
@@ -58,14 +66,13 @@ export default function PaiePage() {
   const { data: runs } = useRuns();
 
   const creerRun = useMutation<any, unknown, void>({
-    mutationFn: () => api.post("payroll/runs/", { period_month: Number(mois), period_year: Number(annee) }),
+    mutationFn: () => api.post("payroll/runs/", { month: Number(mois), year: Number(annee) }),
     onSuccess: () => { toast.success("Lot de paie créé."); setNouveau(false); qc.invalidateQueries({ queryKey: ["payroll/runs/"] }); },
     onError: notifierErreur,
   });
 
   const action = useMutation<any, unknown, { id: number; act: "simuler" | "valider" | "cloturer" | "dsn" | "editer-bulletins" }>({
-    mutationFn: ({ id, act }: { id: number; act: "simuler" | "valider" | "cloturer" | "dsn" | "editer-bulletins" }) =>
-      api.post(`payroll/runs/${id}/${act}/`, {}),
+    mutationFn: ({ id, act }) => api.post(`payroll/runs/${id}/${act}/`, {}),
     onSuccess: (_d, v) => {
       toast.success(
         v.act === "valider" ? "Lot validé définitivement."
@@ -86,7 +93,7 @@ export default function PaiePage() {
       return Array.isArray(d) ? d : d.results ?? [];
     },
   });
-  const paramNonVerifie = (params ?? []).some((p: any) => !p.verified);
+  const paramNonVerifie = (params ?? []).some((p: any) => p.status !== "verifie");
 
   return (
     <div className="space-y-4">
@@ -115,24 +122,25 @@ export default function PaiePage() {
               <CardHeader><CardTitle className="text-base">Historique des lots</CardTitle></CardHeader>
               <CardContent>
                 <Table>
-                  <THead><Tr><Th>Période</Th><Th>Statut</Th><Th>Brut</Th><Th>Net à payer</Th><Th>Charges</Th><Th className="w-72 text-right">Actions</Th></Tr></THead>
+                  <THead><Tr><Th>Période</Th><Th>Statut</Th><Th>Brut</Th><Th>Net</Th><Th>Coût total</Th><Th>Bulletins</Th><Th className="w-72 text-right">Actions</Th></Tr></THead>
                   <TBody>
                     {(runs ?? []).map((r: any) => (
                       <Tr key={r.id}>
-                        <Td>{String(r.period_month).padStart(2, "0")}/{r.period_year}</Td>
-                        <Td><Badge variant={STATUTS[r.status] ?? "muted"}>{r.status}</Badge></Td>
-                        <Td>{fmtEuro(r.total_brut)}</Td>
-                        <Td>{fmtEuro(r.total_net)}</Td>
-                        <Td>{fmtEuro((r.total_cotisations_salariales ?? 0) + (r.total_cotisations_patronales ?? 0))}</Td>
+                        <Td>{String(r.month).padStart(2, "0")}/{r.year}</Td>
+                        <Td><Badge variant={STATUTS[r.status] ?? "muted"}>{r.status_label ?? r.status}</Badge></Td>
+                        <Td>{fmtEuro(r.masse_brute)}</Td>
+                        <Td>{fmtEuro(r.masse_net)}</Td>
+                        <Td>{fmtEuro(r.cout_total)}</Td>
+                        <Td>{r.bulletins_count ?? 0}</Td>
                         <Td className="text-right">
                           <div className="flex justify-end gap-1">
-                            {(r.status === "brouillon" || r.status === "simulee") && (
+                            {STATUTS_NON_CLOTURES.includes(r.status) && (
                               <Button size="sm" variant="outline" onClick={() => action.mutate({ id: r.id, act: "simuler" })}>Simuler</Button>
                             )}
-                            {r.status === "simulee" && (
+                            {STATUTS_VALIDABLES.includes(r.status) && (
                               <Button size="sm" onClick={() => action.mutate({ id: r.id, act: "valider" })}>Valider</Button>
                             )}
-                            {r.status === "validee" && (
+                            {r.status === "valide" && (
                               <>
                                 <Button size="sm" variant="outline" onClick={() => action.mutate({ id: r.id, act: "editer-bulletins" })}>Bulletins PDF</Button>
                                 <Button size="sm" variant="outline" onClick={() => action.mutate({ id: r.id, act: "dsn" })}>DSN</Button>
@@ -164,15 +172,15 @@ export default function PaiePage() {
               <CardHeader><CardTitle className="text-base">Paramètres de paie (versionnés, datés, sourcés)</CardTitle></CardHeader>
               <CardContent>
                 <Table>
-                  <THead><Tr><Th>Nom</Th><Th>Effet</Th><Th>Fin</Th><Th>Vérifié</Th><Th>Source</Th></Tr></THead>
+                  <THead><Tr><Th>Nom</Th><Th>En vigueur du</Th><Th>Au</Th><Th>Statut</Th><Th>Source</Th></Tr></THead>
                   <TBody>
                     {(params ?? []).map((p: any) => (
                       <Tr key={p.id}>
-                        <Td>{p.name}</Td>
-                        <Td>{p.effective_from}</Td>
-                        <Td>{p.effective_to ?? "—"}</Td>
-                        <Td><Badge variant={p.verified ? "success" : "danger"}>{p.verified ? "Vérifié" : "Non vérifié"}</Badge></Td>
-                        <Td className="max-w-[300px] truncate text-xs text-muted-foreground">{p.source_reference ?? "—"}</Td>
+                        <Td>{p.label}</Td>
+                        <Td>{p.valid_from}</Td>
+                        <Td>{p.valid_to ?? "—"}</Td>
+                        <Td><Badge variant={p.status === "verifie" ? "success" : "warning"}>{p.status_label ?? p.status}</Badge></Td>
+                        <Td className="max-w-[300px] truncate text-xs text-muted-foreground">{p.source_label ?? "—"}</Td>
                       </Tr>
                     ))}
                   </TBody>

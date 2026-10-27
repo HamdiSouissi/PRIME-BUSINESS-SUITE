@@ -79,3 +79,63 @@ def test_roles_differents_permissions_differentes(company, rh_user, api_client):
     api_client.force_authenticate(rh_user)
     r = api_client.get("/api/audit/")
     assert r.status_code == 403
+
+
+def test_creation_utilisateur_sans_username_derivedu_email(company, admin_user, api_client):
+    api_client.force_authenticate(admin_user)
+    r = api_client.post(
+        "/api/accounts/users/",
+        {
+            "email": "nouveau@test.example",
+            "first_name": "Nouveau",
+            "last_name": "Collègue",
+            "password": "Test1234!pass",
+            "role": "salarie",
+        },
+        format="json",
+    )
+    assert r.status_code == 201, r.content
+    assert r.json()["username"] == "nouveau@test.example"
+
+
+def test_me_expose_employee_id(company, admin_user, api_client):
+    from apps.hr.models import Employee
+    from datetime import date
+
+    emp = Employee.objects.create(
+        company=company, user=admin_user, matricule="M001",
+        first_name=admin_user.first_name, last_name=admin_user.last_name,
+        hire_date=date(2025, 1, 1), status="actif",
+        social_security_number="123456789012345",
+        bank_iban="FR7612345678901234567890123",
+    )
+    api_client.force_authenticate(admin_user)
+    r = api_client.get("/api/auth/me/")
+    assert r.status_code == 200
+    assert r.json()["employee_id"] == emp.id
+
+
+def test_journal_audit_rattache_entreprise_jwt(company, admin_user, api_client):
+    """Flux JWT réel : le journal d'audit doit porter la company active."""
+    from apps.core.models import AuditLog
+    from django.core.cache import cache
+
+    # D'autres tests incrémentent le compteur d'échecs de connexion : on repart proprement.
+    cache.clear()
+    login = api_client.post(
+        "/api/auth/login/",
+        {"email": "admin@test.example", "password": "Test1234!pass"},
+        format="json",
+    )
+    assert login.status_code == 200
+    token = login.json()["access"]
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+
+    api_client.post(
+        "/api/invoicing/clients/", {"code": "AUD1", "name": "Client Audit"}, format="json"
+    )
+    assert AuditLog.objects.filter(company=company, path__icontains="clients").exists()
+
+    r = api_client.get("/api/audit/?path=clients")
+    assert r.status_code == 200
+    assert len(r.json()) >= 1

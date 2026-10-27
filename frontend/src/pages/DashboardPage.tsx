@@ -18,7 +18,7 @@ export default function DashboardPage() {
     { label: "Solde bancaire disponible", valeur: data.tresorerie?.solde_bancaire_disponible, url: "/tresorerie",
       note: data.tresorerie?.definition },
     { label: "Encours clients (TTC)", valeur: data.facturation?.encours_clients_ttc, url: "/factures" },
-    { label: "MRR", valeur: data.abonnements?.mrr, url: "/abonnements" },
+    { label: "MRR (HT)", valeur: data.abonnements?.mrr_ht, url: "/abonnements" },
     { label: "CA du mois (HT, factures émises)", valeur: data.chiffre_affaires_mois, url: "/factures" },
   ];
 

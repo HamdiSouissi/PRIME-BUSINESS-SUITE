@@ -43,7 +43,8 @@ export default function DevisPage() {
         champs={[
           { name: "client", label: "Client", type: "select", optionsUrl: "invoicing/clients/", required: true },
           { name: "issue_date", label: "Date d'émission", type: "date", required: true },
-          { name: "validity_date", label: "Valable jusqu'au", type: "date" },
+          { name: "validity_days", label: "Validité (jours)", type: "number" },
+          { name: "subject", label: "Objet" },
           { name: "notes", label: "Notes", type: "textarea" },
         ]}
         actions={(q: any) => (
@@ -54,7 +55,7 @@ export default function DevisPage() {
                 <SendHorizontal className="h-4 w-4" />
               </Button>
             )}
-            {(q.status === "accepte" || q.status === "envoye") && (
+            {q.status === "accepte" && (
               <Button size="icon" variant="ghost" title="Convertir en facture"
                 onClick={() => agir.mutate({ id: q.id, act: "convertir" })}>
                 <ArrowRightLeft className="h-4 w-4" />

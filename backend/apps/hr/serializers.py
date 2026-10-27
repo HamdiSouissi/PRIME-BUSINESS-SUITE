@@ -57,6 +57,10 @@ class EmployeeDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
         fields = "__all__"
+        # company est injectée par CompanyScopedViewSet.perform_create, jamais
+        # fournie par le client : sinon la validation échoue (400 « Ce champ est
+        # obligatoire ») et toute création de salarié est impossible.
+        read_only_fields = ("company",)
 
 
 class ContractAmendmentSerializer(serializers.ModelSerializer):
@@ -70,6 +74,7 @@ class LeaveTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveType
         fields = "__all__"
+        read_only_fields = ("company",)
 
 
 class LeaveRequestSerializer(serializers.ModelSerializer):
@@ -93,6 +98,7 @@ class LeaveBalanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveBalance
         fields = "__all__"
+        read_only_fields = ("company",)
 
 
 class EquipmentItemSerializer(serializers.ModelSerializer):
@@ -102,6 +108,7 @@ class EquipmentItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = EquipmentItem
         fields = "__all__"
+        read_only_fields = ("company",)
 
 
 class TrainingRecordSerializer(serializers.ModelSerializer):
@@ -110,6 +117,7 @@ class TrainingRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = TrainingRecord
         fields = "__all__"
+        read_only_fields = ("company",)
 
 
 class InterviewSerializer(serializers.ModelSerializer):
@@ -118,6 +126,7 @@ class InterviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Interview
         fields = "__all__"
+        read_only_fields = ("company",)
 
 
 class EmployeeDocumentSerializer(serializers.ModelSerializer):
@@ -127,7 +136,7 @@ class EmployeeDocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmployeeDocument
         fields = "__all__"
-        read_only_fields = ("uploaded_by",)
+        read_only_fields = ("uploaded_by", "company")
 
     def get_url(self, obj):
         if obj.file:

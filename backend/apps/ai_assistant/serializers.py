@@ -28,6 +28,25 @@ class AIProviderUpdateSerializer(serializers.ModelSerializer):
         fields = ("label", "kind", "base_url", "default_model", "is_enabled",
                   "generation_params", "timeout_seconds", "api_key", "billing_info")
 
+    def validate_kind(self, value):
+        """Un seul fournisseur par type (kind) et par entreprise.
+
+        Sans ce contrôle, la contrainte d'unicité (company, kind) lève une
+        IntegrityError traduite en 500 ; on renvoie ici une 400 exploitable.
+        """
+        request = self.context.get("request")
+        company = getattr(request, "company", None)
+        if company is None:
+            return value
+        doublon = AIProvider.objects.filter(company=company, kind=value)
+        if self.instance is not None:
+            doublon = doublon.exclude(pk=self.instance.pk)
+        if doublon.exists():
+            raise serializers.ValidationError(
+                "Un fournisseur de ce type existe déjà pour cette entreprise."
+            )
+        return value
+
 
 class FeatureRoutingSerializer(serializers.ModelSerializer):
     provider_label = serializers.CharField(source="provider.label", read_only=True)
