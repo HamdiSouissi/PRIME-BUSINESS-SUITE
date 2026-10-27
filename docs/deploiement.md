@@ -74,6 +74,13 @@ sur un rendu ReportLab simplifié (c'est le cas dans le sandbox de développemen
 - `SECRET_KEY` : obligatoire en production (le compose refuse un défaut silencieux : définissez-la dans `.env`).
 - Clés d'API IA : saisies côté interface, chiffrées avec `FIELD_ENCRYPTION_KEY` avant stockage.
 - Le conteneur backend tourne avec l'utilisateur `pbs` (non-root).
+- **TLS / redirection HTTPS** : `SECURE_SSL_REDIRECT` vaut `0` dans la stack Docker
+  locale (nginx en HTTP pur). En production derrière un reverse proxy TLS, passer
+  `SECURE_SSL_REDIRECT=1` : le proxy doit transmettre `X-Forwarded-Proto: https`
+  (déjà fait par le nginx du dépôt), et `settings.py` fait confiance à cet en-tête
+  via `SECURE_PROXY_SSL_HEADER` — pas de boucle de redirection.
+- Le conteneur backend déclare un `HEALTHCHECK` sur `/api/health/` et le service
+  `frontend` n'attend plus que le backend soit `healthy` pour démarrer.
 
 ## 6. Sauvegardes PostgreSQL
 

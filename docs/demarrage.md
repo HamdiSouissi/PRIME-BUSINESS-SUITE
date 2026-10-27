@@ -152,42 +152,54 @@ docker compose up -d
   ci-dessus). Grâce à `restart: unless-stopped`, le service repart automatiquement
   une fois la cause corrigée.
 
-### `net::ERR_CONNECTION_REFUSED` sur `https://localhost/api/...` à la connexion
+### Tous les appels API renvoient `301` (puis `https://localhost` injoignable) à la connexion
 
-Symptôme : la page de connexion s'affiche, mais toute tentative de connexion échoue
-avec `GET https://localhost/api/auth/me/ net::ERR_CONNECTION_REFUSED` dans la console.
+Symptômes : dans les logs nginx, **chaque** requête `/api/...` (y compris
+`POST /api/auth/login/`) répond `301` avec un corps vide (5 octets, la marque de
+fin d'un corps chunked), et la console du navigateur affiche
+`GET https://localhost/api/auth/me/ net::ERR_CONNECTION_REFUSED`.
 
-Cause : l'application n'écoute qu'en **HTTP sur le port 8080** (le conteneur nginx
-n'a pas de TLS et rien n'écoute sur le port 443). Le SPA utilise des URLs relatives
-(`/api/...`) qui héritent de l'origine de la page : si la barre d'adresse montre
-`https://localhost` (sans port), les appels API partent vers le port 443 → refus.
-Cela arrive quand :
+Cause racine : avec `DEBUG=0`, le `SecurityMiddleware` de Django active par défaut
+`SECURE_SSL_REDIRECT=True` et renvoie un 301 de HTTP vers HTTPS pour **toutes** les
+requêtes. La stack Docker locale ne fait que du HTTP (nginx sans TLS, rien sur le
+port 443) : le navigateur suit le 301 vers `https://localhost/...` et essuie un
+refus de connexion. (Ce réglage était resté inactif tant que la variable `DEBUG`
+n'était pas lue par `settings.py` — d'où son apparition après les premiers correctifs.)
 
-- on saisit `localhost` nu dans la barre d'adresse et que Chrome bascule en HTTPS
-  (mode « Toujours utiliser une connexion sécurisée / Always use secure connections »,
-  ou une suggestion d'historique) ;
-- un **service worker périmé** (issu d'un ancien essai) sert l'application depuis le
-  cache alors que le réseau est injoignable — les anciens logs nginx montrent des
-  requêtes `GET /sw.js` auxquelles nginx répondait à tort avec `index.html`.
+Le correctif est dans le dépôt : `docker-compose.yml` positionne
+`SECURE_SSL_REDIRECT=0` pour le backend, et `settings.py` accepte l'en-tête
+`X-Forwarded-Proto` (`SECURE_PROXY_SSL_HEADER`) pour les déploiements derrière un
+vrai terminateur TLS. Après un `git pull`, reconstruire le backend :
 
-Marche à suivre (Chrome/Edge) :
+```bash
+docker compose up --build -d
+```
 
-1. Ouvrir **exactement** `http://localhost:8080` (avec `http://` et le port) —
-   jamais `https://localhost` ni `localhost` seul.
-2. Supprimer le service worker et le cache : `F12` → *Application* →
-   *Service Workers* → *Désinscrire (Unregister)*, puis *Stockage* →
-   *Effacer les données du site*. Vérifier aussi `chrome://serviceworker-internals/`
-   (entrées `localhost`) si la page tourne sur l'origine `https://localhost`.
-3. Désactiver la bascule HTTPS pour le site : `chrome://settings/security` →
-   désactiver *Toujours utiliser une connexion sécurisée*, et supprimer la suggestion
-   `https://localhost` de l'historique (surligner la suggestion → `Maj + Suppr`).
-4. Vérifier le backend indépendamment : `http://localhost:8000/api/health/` doit
-   renvoyer `{"status":"ok","database":true}`, et `docker compose ps` doit montrer
-   tous les services au vert.
-5. Recharger avec `Ctrl + Maj + R`, puis se connecter avec le compte de démonstration.
+Vérification immédiate (depuis l'hôte Windows, en PowerShell) — seule cette URL
+existe, et le vrai `curl.exe` affiche les en-têtes sans suivre les redirections :
 
-Avec la configuration nginx corrigée, `GET /sw.js` renvoie désormais **404** :
-Chrome supprime alors automatiquement un éventuel service worker périmé lors de sa
-prochaine vérification de mise à jour (autoguérison, sans manipulation manuelle).
-Option : décommenter `80:80` dans `docker-compose.yml` pour que `http://localhost`
-nu fonctionne aussi (sauf si le port 80 est déjà occupé sur la machine).
+```powershell
+curl.exe -i http://localhost:8000/api/health/
+# Attendu : HTTP/1.1 200 OK puis {"status": "ok", "database": true}
+# Un 301 Location: https://... signifierait que SECURE_SSL_REDIRECT vaut encore 1.
+```
+
+Notes :
+
+- L'alias `curl` de PowerShell est `Invoke-WebRequest`, qui **suit** les
+  redirections silencieusement : c'est pourquoi la commande semblait ne rien
+  renvoyer. Utiliser `curl.exe` (livré avec Windows 10/11) ou le paramètre
+  `-MaximumRedirection 0`.
+- En production derrière HTTPS, laisser `SECURE_SSL_REDIRECT=1` (défaut) : le proxy
+  transmet `X-Forwarded-Proto: https`, Django détecte alors la connexion sécurisée
+  et ne redirige pas en boucle.
+- Un `401` sur `/api/auth/me/` reste normal tant qu'aucune session n'est ouverte ;
+  un `502`, lui, signale un conteneur backend arrêté (`docker compose logs backend`).
+
+### Ouverture de l'application : toujours viser `http://localhost:8080`
+
+Le SPA utilise des URLs relatives (`/api/...`) qui héritent de l'origine de la page :
+utiliser explicitement `http://localhost:8080` (avec `http://` et le port), jamais
+`https://localhost` ni `localhost` nu — Chrome bascule alors en HTTPS vers le port
+443 où rien n'écoute. Option : décommenter `80:80` dans `docker-compose.yml` pour que
+`http://localhost` nu fonctionne aussi (sauf si le port 80 est déjà occupé sur la machine).

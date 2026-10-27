@@ -196,7 +196,16 @@ CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "")
 # ---------------------------------------------------------------------------
 # Sécurité renforcée en production
 # ---------------------------------------------------------------------------
+# Le reverse proxy (nginx en Docker) écrase et transmet X-Forwarded-Proto :
+# on peut donc lui faire confiance pour connaître le schéma vu par le client
+# (indispensable derrière un terminateur TLS : évite les boucles de redirection).
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 if not DEBUG:  # pragma: no cover
+    # Redirection HTTP -> HTTPS activée par défaut en production. La stack
+    # Docker locale ne fait QUE du HTTP (nginx sans TLS) : il faut positionner
+    # SECURE_SSL_REDIRECT=0 dans docker-compose.yml / .env, sinon chaque appel
+    # d'API reçoit un 301 vers https://... que rien ne dessert (échec de login).
     SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True

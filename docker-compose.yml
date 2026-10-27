@@ -56,6 +56,12 @@ services:
       CELERY_TASK_ALWAYS_EAGER: "0"
       FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:-}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
+      # nginx sert l'application en HTTP pur (pas de TLS dans cette stack) :
+      # sans cette ligne, Django (DEBUG=0) renvoie un 301 vers https sur chaque
+      # appel d'API, dont /api/auth/login/ → ERR_CONNECTION_REFUSED en boucle.
+      # Repasser à 1 (ou supprimer la variable) devant un vrai reverse proxy TLS
+      # qui transmet X-Forwarded-Proto: https (SECURE_PROXY_SSL_HEADER est réglé).
+      SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-0}
       # DEMO_SEED=1 : crée le compte de démonstration au 1er démarrage
       # (admin@primevision.example / voir docs/demarrage.md) — JAMAIS en production
       DEMO_SEED: ${DEMO_SEED:-0}
@@ -91,7 +97,8 @@ services:
       dockerfile: docker/Dockerfile.frontend
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "8080:80"
       # Décommenter pour accéder aussi à l'app via http://localhost (port 80)
