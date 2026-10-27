@@ -94,6 +94,11 @@ services:
       - backend
     ports:
       - "8080:80"
+      # Décommenter pour accéder aussi à l'app via http://localhost (port 80)
+      # sans préciser le port. Évite qu'un « localhost » nu dans la barre
+      # d'adresse soit basculé en https://localhost (port 443, rien n'y écoute
+      # → ERR_CONNECTION_REFUSED). Inutile si le port 80 est déjà pris (IIS…).
+      # - "80:80"
 
 volumes:
   pgdata:

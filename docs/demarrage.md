@@ -151,3 +151,43 @@ docker compose up -d
   `docker compose logs backend` (le plus souvent l'erreur d'authentification PostgreSQL
   ci-dessus). Grâce à `restart: unless-stopped`, le service repart automatiquement
   une fois la cause corrigée.
+
+### `net::ERR_CONNECTION_REFUSED` sur `https://localhost/api/...` à la connexion
+
+Symptôme : la page de connexion s'affiche, mais toute tentative de connexion échoue
+avec `GET https://localhost/api/auth/me/ net::ERR_CONNECTION_REFUSED` dans la console.
+
+Cause : l'application n'écoute qu'en **HTTP sur le port 8080** (le conteneur nginx
+n'a pas de TLS et rien n'écoute sur le port 443). Le SPA utilise des URLs relatives
+(`/api/...`) qui héritent de l'origine de la page : si la barre d'adresse montre
+`https://localhost` (sans port), les appels API partent vers le port 443 → refus.
+Cela arrive quand :
+
+- on saisit `localhost` nu dans la barre d'adresse et que Chrome bascule en HTTPS
+  (mode « Toujours utiliser une connexion sécurisée / Always use secure connections »,
+  ou une suggestion d'historique) ;
+- un **service worker périmé** (issu d'un ancien essai) sert l'application depuis le
+  cache alors que le réseau est injoignable — les anciens logs nginx montrent des
+  requêtes `GET /sw.js` auxquelles nginx répondait à tort avec `index.html`.
+
+Marche à suivre (Chrome/Edge) :
+
+1. Ouvrir **exactement** `http://localhost:8080` (avec `http://` et le port) —
+   jamais `https://localhost` ni `localhost` seul.
+2. Supprimer le service worker et le cache : `F12` → *Application* →
+   *Service Workers* → *Désinscrire (Unregister)*, puis *Stockage* →
+   *Effacer les données du site*. Vérifier aussi `chrome://serviceworker-internals/`
+   (entrées `localhost`) si la page tourne sur l'origine `https://localhost`.
+3. Désactiver la bascule HTTPS pour le site : `chrome://settings/security` →
+   désactiver *Toujours utiliser une connexion sécurisée*, et supprimer la suggestion
+   `https://localhost` de l'historique (surligner la suggestion → `Maj + Suppr`).
+4. Vérifier le backend indépendamment : `http://localhost:8000/api/health/` doit
+   renvoyer `{"status":"ok","database":true}`, et `docker compose ps` doit montrer
+   tous les services au vert.
+5. Recharger avec `Ctrl + Maj + R`, puis se connecter avec le compte de démonstration.
+
+Avec la configuration nginx corrigée, `GET /sw.js` renvoie désormais **404** :
+Chrome supprime alors automatiquement un éventuel service worker périmé lors de sa
+prochaine vérification de mise à jour (autoguérison, sans manipulation manuelle).
+Option : décommenter `80:80` dans `docker-compose.yml` pour que `http://localhost`
+nu fonctionne aussi (sauf si le port 80 est déjà occupé sur la machine).
