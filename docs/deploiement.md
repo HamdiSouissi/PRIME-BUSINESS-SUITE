@@ -11,7 +11,11 @@
 
 ## 2. Configuration
 
-Créer un fichier `.env` à la racine (jamais commité — il est dans `.gitignore`) :
+Créer un fichier `.env` à la racine à partir du modèle (jamais commité — il est dans `.gitignore`) :
+
+```bash
+cp .env.example .env
+```
 
 ```env
 SECRET_KEY=generez-une-longue-chaine-aleatoire
@@ -19,9 +23,17 @@ POSTGRES_DB=pbs
 POSTGRES_USER=pbs
 POSTGRES_PASSWORD=mot-de-passe-fort
 FIELD_ENCRYPTION_KEY=    # voir §5 : clé de chiffrement des clés API (Fernet, 44 caractères base64)
-ALLOWED_HOSTS=localhost,127.0.0.1
+ALLOWED_HOSTS=localhost,127.0.0.1,frontend
 CORS_ALLOWED_ORIGINS=http://localhost:8080
 ```
+
+> ⚠️ **`POSTGRES_PASSWORD` n'est pris en compte qu'à la première initialisation du volume
+> `pgdata`.** Sur un volume existant, le rôle PostgreSQL conserve son mot de passe initial :
+> modifier la variable produit alors `FATAL: password authentication failed for user "pbs"`
+> (procédures de réparation dans `docs/demarrage.md`, § 8).
+>
+> Les variables `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS` sont lues directement par
+> `backend/config/settings.py` (les variantes préfixées `DJANGO_*` sont également acceptées).
 
 Générer `FIELD_ENCRYPTION_KEY` :
 

@@ -1,5 +1,6 @@
 # Prime Business Suite — pile complète (compatible Windows Docker Desktop).
 # Démarrage : `docker compose up --build` depuis la racine du dépôt.
+# Configuration : copier `.env.example` vers `.env` (jamais commité).
 # ⚠️ Ce fichier est livré validé statiquement : il n'a pas pu être testé
 #    dans l'environnement de développement (pas de Docker dans le sandbox) —
 #    procédure de vérification décrite dans docs/deploiement.md.
@@ -10,17 +11,30 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-pbs}
       POSTGRES_USER: ${POSTGRES_USER:-pbs}
+      # ⚠️ Ce mot de passe n'est appliqué qu'à la PREMIÈRE initialisation du
+      #    volume pgdata. Si le volume existe déjà (changement de .env, restauration),
+      #    le rôle garde son ancien mot de passe → « FATAL: password authentication
+      #    failed for user "pbs" ». Solutions dans docs/demarrage.md (§ Dépannage).
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changez-moi}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      # Authentification réelle sur TCP : un décalage de mot de passe rend le
+      # service « unhealthy » (visible dans `docker compose ps`) au lieu d'un
+      # crash tardif du backend et d'un 502 nginx peu explicite.
+      test:
+        [
+          "CMD-SHELL",
+          "PGPASSWORD=\"$${POSTGRES_PASSWORD}\" psql -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\" -tAc 'SELECT 1'",
+        ]
       interval: 5s
       timeout: 3s
       retries: 10
 
   redis:
     image: redis:7.4-alpine
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -31,7 +45,9 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.backend
+    restart: unless-stopped
     environment:
+      # Noms courts reconnus par backend/config/settings.py (alias DJANGO_*).
       SECRET_KEY: ${SECRET_KEY:-dev-insecure-a-changer}
       DEBUG: "0"
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,frontend}
@@ -55,6 +71,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.backend
+    restart: unless-stopped
     command: celery -A config.celery worker --loglevel=info
     environment:
       SECRET_KEY: ${SECRET_KEY:-dev-insecure-a-changer}
@@ -72,6 +89,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.frontend
+    restart: unless-stopped
     depends_on:
       - backend
     ports:

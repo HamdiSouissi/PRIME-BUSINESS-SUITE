@@ -6,6 +6,8 @@ __pycache__/
 venv/
 .env
 .env.*
+# Le modèle de configuration doit être versionné (seul le vrai .env reste ignoré)
+!.env.example
 
 # Django / données locales
 backend/db.sqlite3

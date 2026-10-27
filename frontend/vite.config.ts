@@ -6,7 +6,9 @@ import path from "path";
 // En développement : l'application est servie par Vite, qui proxifie l'API
 // vers le backend Django. Ainsi le navigateur n'appelle jamais localhost.
 export default defineConfig({
-  plugins: [react()],
+  // tailwindcss() DOIT être enregistré : sans lui, le CSS Tailwind n'est jamais
+  // compilé (aucune classe utilitaire, @apply/@theme restés littéraux → page sans style).
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: { "@": path.resolve(__dirname, "src") },
   },

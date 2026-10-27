@@ -32,13 +32,18 @@ def env_list(name, default=""):
 
 # ---------------------------------------------------------------------------
 # Sécurité
+# Les noms préfixés DJANGO_* sont la forme canonique ; les noms courts
+# (SECRET_KEY, DEBUG, ALLOWED_HOSTS) sont acceptés en secours — ce sont ceux
+# utilisés par docker-compose.yml et .env.example.
 # ---------------------------------------------------------------------------
 SECRET_KEY = env(
     "DJANGO_SECRET_KEY",
-    "dev-insecure-secret-key-change-me-in-production",
+    env("SECRET_KEY", "dev-insecure-secret-key-change-me-in-production"),
 )
-DEBUG = env_bool("DJANGO_DEBUG", True)
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "*") or ["*"]
+DEBUG = env_bool("DJANGO_DEBUG", env_bool("DEBUG", True))
+ALLOWED_HOSTS = (
+    env_list("DJANGO_ALLOWED_HOSTS", env("ALLOWED_HOSTS", "*")) or ["*"]
+)
 
 # ---------------------------------------------------------------------------
 # Applications
