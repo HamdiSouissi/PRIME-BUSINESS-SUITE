@@ -1,0 +1,26 @@
+# Exclusions du contexte de build Docker.
+# Sans ce fichier, "COPY frontend/ ./" écraserait le node_modules fraîchement
+# installé (binaires Linux) par celui de la machine hôte (binaires Windows/macOS),
+# ce qui casse silencieusement Tailwind (lightningcss natif) → CSS vide.
+
+**/node_modules
+**/dist
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+
+.git
+.venv
+venv
+.env
+.env.*
+
+backend/db.sqlite3
+backend/test_db.sqlite3
+backend/media
+backups
+*.backup
+
+.vscode
+.idea
+.DS_Store

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Bulletin de paie {{ bulletin.number }}</title>
+<style>
+  body { font-family: DejaVu Sans, Helvetica, Arial, sans-serif; font-size: 10px; color: #111; }
+  h1 { font-size: 16px; margin-bottom: 2px; }
+  h2 { font-size: 12px; margin: 12px 0 4px; color: #1e3a8a; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  th, td { border: 1px solid #cbd5e1; padding: 3px 5px; text-align: left; }
+  th { background: #eff6ff; }
+  .num { text-align: right; white-space: nowrap; }
+  .header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+  .box { border: 1px solid #94a3b8; padding: 8px; margin-bottom: 8px; }
+  .neg { color: #b91c1c; }
+  .totaux td { font-weight: bold; background: #f8fafc; }
+  .warn { background: #fef3c7; border: 1px solid #f59e0b; padding: 6px; font-weight: bold; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>{{ company.name }}</h1>
+      <div>{{ company.address }} {{ company.postal_code }} {{ company.city }}</div>
+      <div>SIRET : {{ company.siret }} — NAF : {{ company.naf_code }}</div>
+      <div>Convention collective : {{ company.collective_agreement }}</div>
+    </div>
+    <div>
+      <h1>Bulletin de paie</h1>
+      <div>N° {{ bulletin.number }}</div>
+      <div>Période : {{ bulletin.run.month }}/{{ bulletin.run.year }}</div>
+    </div>
+  </div>
+
+  <div class="box">
+    <strong>Salarié :</strong> {{ bulletin.employee.full_name }} —
+    Matricule {{ bulletin.employee.matricule }} —
+    Poste : {{ bulletin.employee.position }}<br>
+    <strong>Contrat :</strong> {{ bulletin.contract.get_contract_type_display }} depuis le
+    {{ bulletin.contract.start_date }} — Classification : {{ bulletin.contract.classification }}
+  </div>
+
+  {% if bulletin.provisional %}
+  <div class="warn">
+    CALCUL PROVISOIRE : le jeu de règles utilisé n'a pas été vérifié par un
+    spécialiste de la paie. Bulletin non utilisable en production.
+  </div>
+  {% endif %}
+
+  <h2>Éléments de brut</h2>
+  <table>
+    <thead><tr><th>Rubrique</th><th>Base / détail</th><th class="num">Montant</th></tr></thead>
+    <tbody>
+      {% for ligne in result.lignes_brut %}
+      <tr>
+        <td>{{ ligne.label }}</td>
+        <td>{{ ligne.base }}</td>
+        <td class="num {% if ligne.amount < 0 %}neg{% endif %}">{{ ligne.amount }} €</td>
+      </tr>
+      {% endfor %}
+      <tr class="totaux"><td colspan="2">SALAIRE BRUT</td><td class="num">{{ result.totaux.brut }} €</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Cotisations et contributions</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Rubrique</th><th class="num">Base</th>
+        <th class="num">Taux sal.</th><th class="num">Salarié</th>
+        <th class="num">Taux pat.</th><th class="num">Patronal</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in lines %}
+      <tr>
+        <td>{{ line.label }}</td>
+        <td class="num">{{ line.base }}</td>
+        <td class="num">{{ line.rate_salarial }} %</td>
+        <td class="num {% if line.amount_salarial < 0 %}neg{% endif %}">{{ line.amount_salarial }}</td>
+        <td class="num">{{ line.rate_patronal }} %</td>
+        <td class="num {% if line.amount_patronal < 0 %}neg{% endif %}">{{ line.amount_patronal }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Net et coût</h2>
+  <table>
+    <tr><td>Total des cotisations salariales</td><td class="num">{{ result.totaux.total_cotisations_salariales }} €</td></tr>
+    <tr><td>Total des cotisations patronales (net d'allègements)</td><td class="num">{{ result.totaux.total_cotisations_patronales }} €</td></tr>
+    <tr><td><strong>Net social</strong></td><td class="num"><strong>{{ result.totaux.net_social }} €</strong></td></tr>
+    <tr><td>Net imposable</td><td class="num">{{ result.totaux.net_imposable }} €</td></tr>
+    <tr><td>Prélèvement à la source ({{ result.totaux.taux_pas }} %)</td><td class="num">{{ result.totaux.prelevement_a_la_source }} €</td></tr>
+    <tr class="totaux"><td>NET À PAYER</td><td class="num">{{ result.totaux.net_a_payer }} €</td></tr>
+    <tr><td>Coût total employeur</td><td class="num">{{ result.totaux.cout_employeur }} €</td></tr>
+  </table>
+
+  <p style="color:#64748b;font-size:8px">
+    Empreinte d'intégrité : {{ bulletin.result_hash }} — Jeu de règles :
+    {{ bulletin.parameter_set.label }} ({{ bulletin.parameter_set.get_status_display }}).
+    Document généré par Prime Business Suite le {% now "d/m/Y à H:i" %}.
+  </p>
+</body>
+</html>

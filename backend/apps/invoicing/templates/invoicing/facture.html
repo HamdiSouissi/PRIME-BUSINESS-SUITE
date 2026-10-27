@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Facture {{ invoice.number }}</title>
+<style>
+  body { font-family: DejaVu Sans, Helvetica, Arial, sans-serif; font-size: 10px; color: #111; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+  th, td { border: 1px solid #cbd5e1; padding: 4px 6px; text-align: left; }
+  th { background: #eff6ff; }
+  .num { text-align: right; }
+  .header { display: flex; justify-content: space-between; }
+  .box { border: 1px solid #94a3b8; padding: 8px; margin-bottom: 8px; }
+  .totaux td { font-weight: bold; background: #f8fafc; }
+  .mentions { font-size: 8px; color: #475569; margin-top: 16px; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>{{ company.name }}</h1>
+      <div>{{ company.address }} — {{ company.postal_code }} {{ company.city }}</div>
+      <div>SIRET : {{ company.siret }}{% if company.vat_number %} — TVA : {{ company.vat_number }}{% endif %}</div>
+      <div>{% if company.rcs_city %}RCS {{ company.rcs_city }} {{ company.rcs_number }} — {% endif %}Capital : {{ company.share_capital }} €</div>
+    </div>
+    <div style="text-align:right">
+      <h1>{{ invoice.get_invoice_type_display }}</h1>
+      <div><strong>N° {{ invoice.number }}</strong></div>
+      <div>Émise le {{ invoice.issue_date }}</div>
+      <div>Échéance : {{ invoice.due_date }}</div>
+    </div>
+  </div>
+
+  <div class="box">
+    <strong>Facturé à :</strong> {{ invoice.client.name }}<br>
+    {{ invoice.client.address }}<br>
+    {% if invoice.client.siret %}SIRET : {{ invoice.client.siret }}{% endif %}
+    {% if invoice.client.vat_number %} — TVA : {{ invoice.client.vat_number }}{% endif %}
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Description</th><th class="num">Qté</th><th class="num">P.U. HT</th>
+        <th class="num">TVA</th><th class="num">Total HT</th><th class="num">Total TVA</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in invoice.lines.all %}
+      <tr>
+        <td>{{ line.description }}</td>
+        <td class="num">{{ line.quantity }}</td>
+        <td class="num">{{ line.unit_price_ht }} €</td>
+        <td class="num">{{ line.vat_rate }} %</td>
+        <td class="num">{{ line.total_ht }} €</td>
+        <td class="num">{{ line.total_vat }} €</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <table>
+    <tr><td>Total HT</td><td class="num">{{ invoice.total_ht }} €</td></tr>
+    <tr><td>Total TVA</td><td class="num">{{ invoice.total_vat }} €</td></tr>
+    <tr class="totaux"><td>Total TTC</td><td class="num">{{ invoice.total_ttc }} €</td></tr>
+    {% if invoice.amount_paid %}
+    <tr><td>Déjà réglé</td><td class="num">{{ invoice.amount_paid }} €</td></tr>
+    <tr class="totaux"><td>Reste à payer</td><td class="num">{{ invoice.reste_a_payer }} €</td></tr>
+    {% endif %}
+  </table>
+
+  <div class="mentions">
+    {% if company.is_franchise_tva %}
+    <p>TVA non applicable, art. 293 B du CGI.</p>
+    {% endif %}
+    <p>
+      En cas de retard de paiement, pénalités au taux légal en vigueur majoré,
+      ainsi qu'une indemnité forfaitaire de recouvrement de 40 € (art. L.441-10
+      du Code de commerce). Pas d'escompte pour paiement anticipé.
+    </p>
+    {% if company.invoice_footer %}<p>{{ company.invoice_footer }}</p>{% endif %}
+    {% if invoice.einvoice_platform_id %}
+    <p>Référence de transmission électronique : {{ invoice.einvoice_platform_id }} (statut : {{ invoice.get_einvoice_status_display }}).</p>
+    {% endif %}
+  </div>
+</body>
+</html>

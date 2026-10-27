@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+
+# Django / données locales
+backend/db.sqlite3
+backend/test_db.sqlite3
+backend/media/
+staticfiles/
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Outils
+.pytest_cache/
+.vscode/
+.idea/
+.DS_Store
+
+# Sauvegardes locales (ne jamais committer d'export de données RH)
+backups/
+*.backup

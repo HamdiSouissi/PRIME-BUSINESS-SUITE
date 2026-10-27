@@ -1,0 +1,81 @@
+# Prime Business Suite — pile complète (compatible Windows Docker Desktop).
+# Démarrage : `docker compose up --build` depuis la racine du dépôt.
+# ⚠️ Ce fichier est livré validé statiquement : il n'a pas pu être testé
+#    dans l'environnement de développement (pas de Docker dans le sandbox) —
+#    procédure de vérification décrite dans docs/deploiement.md.
+
+services:
+  db:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pbs}
+      POSTGRES_USER: ${POSTGRES_USER:-pbs}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changez-moi}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-dev-insecure-a-changer}
+      DEBUG: "0"
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,frontend}
+      DATABASE_URL: postgres://pbs:${POSTGRES_PASSWORD:-changez-moi}@db:5432/pbs
+      REDIS_URL: redis://redis:6379/0
+      CELERY_TASK_ALWAYS_EAGER: "0"
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:-}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
+      # DEMO_SEED=1 : crée le compte de démonstration au 1er démarrage
+      # (admin@primevision.example / voir docs/demarrage.md) — JAMAIS en production
+      DEMO_SEED: ${DEMO_SEED:-0}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    command: celery -A config.celery worker --loglevel=info
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-dev-insecure-a-changer}
+      DATABASE_URL: postgres://pbs:${POSTGRES_PASSWORD:-changez-moi}@db:5432/pbs
+      REDIS_URL: redis://redis:6379/0
+      CELERY_TASK_ALWAYS_EAGER: "0"
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  pgdata:
