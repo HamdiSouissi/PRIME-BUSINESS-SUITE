@@ -43,10 +43,23 @@ class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("id", "email", "username", "first_name", "last_name", "phone", "password", "role")
+        extra_kwargs = {
+            # La connexion se fait par e-mail ; le username hérité d'AbstractUser
+            # reste requis en base mais est déduit de l'e-mail dans validate().
+            "username": {"required": False, "allow_blank": True},
+        }
 
     def validate_password(self, value):
         validate_password(value)
         return value
+
+    def validate(self, attrs):
+        # La connexion se fait par e-mail (USERNAME_FIELD) ; le `username`
+        # hérité d'AbstractUser reste requis en base, on le déduit donc de
+        # l'e-mail s'il n'est pas fourni explicitement.
+        if not attrs.get("username") and attrs.get("email"):
+            attrs["username"] = attrs["email"]
+        return attrs
 
     def create(self, validated_data):
         role = validated_data.pop("role", Roles.SALARIE)

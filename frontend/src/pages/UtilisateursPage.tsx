@@ -49,10 +49,11 @@ export default function UtilisateursPage() {
           { key: "first_name", label: "Prénom" },
           { key: "last_name", label: "Nom" },
           {
-            key: "global_role", label: "Rôle",
-            render: (u: any) => (
-              <Badge>{ROLES.find((r) => r.value === u.global_role)?.label ?? u.global_role}</Badge>
-            ),
+            key: "memberships", label: "Rôle",
+            render: (u: any) => {
+              const role = u.memberships?.[0]?.role;
+              return <Badge>{ROLES.find((r) => r.value === role)?.label ?? role ?? "—"}</Badge>;
+            },
           },
           {
             key: "is_active", label: "Actif",
@@ -60,15 +61,17 @@ export default function UtilisateursPage() {
           },
         ]}
         champs={[
-          { name: "email", label: "Email", type: "email", required: true },
+          { name: "email", label: "Email (identifiant de connexion)", type: "email", required: true },
+          { name: "username", label: "Nom d'utilisateur (déduit de l'email si vide)", hideOnEdit: true },
           { name: "first_name", label: "Prénom", required: true },
           { name: "last_name", label: "Nom", required: true },
+          { name: "phone", label: "Téléphone" },
           { name: "password", label: "Mot de passe initial", type: "password", hideOnEdit: true, required: true },
-          { name: "global_role", label: "Rôle", type: "select", options: ROLES, required: true },
+          { name: "role", label: "Rôle", type: "select", options: ROLES, required: true },
         ]}
         actions={(u: any) => (
           <Button size="icon" variant="ghost" title="Changer le rôle"
-            onClick={() => { setCible(u); setRole(u.global_role ?? "salarie"); }}>
+            onClick={() => { setCible(u); setRole(u.memberships?.[0]?.role ?? "salarie"); }}>
             <ShieldCheck className="h-4 w-4" />
           </Button>
         )}

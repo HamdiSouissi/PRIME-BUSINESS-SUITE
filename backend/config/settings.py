@@ -32,13 +32,18 @@ def env_list(name, default=""):
 
 # ---------------------------------------------------------------------------
 # Sécurité
+# Les noms préfixés DJANGO_* sont la forme canonique ; les noms courts
+# (SECRET_KEY, DEBUG, ALLOWED_HOSTS) sont acceptés en secours — ce sont ceux
+# utilisés par docker-compose.yml et .env.example.
 # ---------------------------------------------------------------------------
 SECRET_KEY = env(
     "DJANGO_SECRET_KEY",
-    "dev-insecure-secret-key-change-me-in-production",
+    env("SECRET_KEY", "dev-insecure-secret-key-change-me-in-production"),
 )
-DEBUG = env_bool("DJANGO_DEBUG", True)
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "*") or ["*"]
+DEBUG = env_bool("DJANGO_DEBUG", env_bool("DEBUG", True))
+ALLOWED_HOSTS = (
+    env_list("DJANGO_ALLOWED_HOSTS", env("ALLOWED_HOSTS", "*")) or ["*"]
+)
 
 # ---------------------------------------------------------------------------
 # Applications
@@ -191,7 +196,16 @@ CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "")
 # ---------------------------------------------------------------------------
 # Sécurité renforcée en production
 # ---------------------------------------------------------------------------
+# Le reverse proxy (nginx en Docker) écrase et transmet X-Forwarded-Proto :
+# on peut donc lui faire confiance pour connaître le schéma vu par le client
+# (indispensable derrière un terminateur TLS : évite les boucles de redirection).
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 if not DEBUG:  # pragma: no cover
+    # Redirection HTTP -> HTTPS activée par défaut en production. La stack
+    # Docker locale ne fait QUE du HTTP (nginx sans TLS) : il faut positionner
+    # SECURE_SSL_REDIRECT=0 dans docker-compose.yml / .env, sinon chaque appel
+    # d'API reçoit un 301 vers https://... que rien ne dessert (échec de login).
     SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True

@@ -11,16 +11,21 @@ function Budgets() {
   return (
     <ResourcePage
       titre="Budgets"
-      description="Chargez des lignes budgetaires puis comparez au réel — écart calculé en valeur et %."
+      description="Chargez des lignes budgétaires puis comparez au réel — écart calculé en valeur et %."
       endpoint="budgets/budgets/"
       colonnes={[
-        { key: "name", label: "Nom" },
+        { key: "label", label: "Nom" },
         { key: "year", label: "Année" },
-        { key: "status", label: "Statut", render: (b: any) => <Badge variant={b.status === "actif" ? "success" : "muted"}>{b.status}</Badge> },
+        { key: "is_active", label: "Statut", render: (b: any) => <Badge variant={b.is_active ? "success" : "muted"}>{b.is_active ? "Actif" : "Inactif"}</Badge> },
       ]}
       champs={[
-        { name: "name", label: "Nom", required: true },
+        { name: "label", label: "Nom du budget", required: true },
         { name: "year", label: "Année", type: "number", required: true },
+        {
+          name: "is_active", label: "Statut", type: "select",
+          options: [{ value: "true", label: "Actif" }, { value: "false", label: "Inactif" }],
+        },
+        { name: "hypotheses", label: "Hypothèses", type: "textarea" },
       ]}
     />
   );
@@ -37,18 +42,17 @@ function Lignes() {
   });
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">Budget vs Réel</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="text-base">Lignes budgétaires</CardTitle></CardHeader>
       <CardContent>
         <Table>
-          <THead><Tr><Th>Compte</Th><Th>Budget</Th><Th>Réel</Th><Th>Écart</Th><Th>%</Th></Tr></THead>
+          <THead><Tr><Th>Libellé</Th><Th>Nature</Th><Th>Préfixe compte</Th><Th>Total annuel</Th></Tr></THead>
           <TBody>
             {(data ?? []).map((l: any) => (
               <Tr key={l.id}>
-                <Td>{l.account_code ?? l.account}</Td>
-                <Td>{fmtEuro(l.budgeted)}</Td>
-                <Td>{fmtEuro(l.actual)}</Td>
-                <Td className={Number(l.variance) < 0 ? "text-destructive font-medium" : "text-emerald-600"}>{fmtEuro(l.variance)}</Td>
-                <Td>{l.variance_pct != null ? `${Number(l.variance_pct).toFixed(1)} %` : "—"}</Td>
+                <Td>{l.label}</Td>
+                <Td>{l.nature_label ?? l.nature}</Td>
+                <Td>{l.account_prefix || "—"}</Td>
+                <Td>{fmtEuro(l.total_annuel)}</Td>
               </Tr>
             ))}
           </TBody>
@@ -64,11 +68,11 @@ export default function BudgetsPage() {
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Budgets & pilotage</h1>
       <p className="text-sm text-muted-foreground">
-        Écart = Réel − Budget (les pourcentages n'ont de sens que sur les postes dotés d'un budget).
+        Le réalisé est rapproché via les préfixes de compte comptable (action d'analyse d'un budget).
       </p>
       <Tabs onglets={[
         { id: "budgets", label: "Budgets", contenu: <Budgets /> },
-        { id: "analyse", label: "Budget vs Réel", contenu: <Lignes /> },
+        { id: "analyse", label: "Lignes", contenu: <Lignes /> },
       ]} />
     </div>
   );

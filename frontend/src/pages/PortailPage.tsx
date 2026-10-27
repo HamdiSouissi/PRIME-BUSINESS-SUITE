@@ -13,14 +13,14 @@ import { toast } from "sonner";
 function MonAbsence() {
   const qc = useQueryClient();
   const { profil } = useAuth();
-  const [form, setForm] = useState({ leave_type: "", start_date: "", end_date: "", reason: "" });
+  const [form, setForm] = useState({ leave_type: "", start_date: "", end_date: "", comment: "" });
   const { data: types } = useQuery({ queryKey: ["leave-types"], queryFn: async () => (await api.get("hr/leave-types/")).data });
   const liste = Array.isArray(types) ? types : types?.results ?? [];
   const soumettre = useMutation<any, unknown, void>({
-    mutationFn: () => api.post("hr/leave-requests/", { ...form }),
+    mutationFn: () => api.post("hr/leave-requests/", { ...form, employee: profil?.employee_id }),
     onSuccess: () => {
       toast.success("Demande d'absence soumise — vous serez notifié(e) de la décision.");
-      setForm({ leave_type: "", start_date: "", end_date: "", reason: "" });
+      setForm({ leave_type: "", start_date: "", end_date: "", comment: "" });
       qc.invalidateQueries({ queryKey: ["portail-absences"] });
     },
     onError: notifierErreur,
@@ -33,7 +33,7 @@ function MonAbsence() {
           <Label>Type d'absence</Label>
           <Select value={form.leave_type} onChange={(e) => setForm({ ...form, leave_type: e.target.value })}>
             <option value="">— Choisir —</option>
-            {liste.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            {liste.map((t: any) => <option key={t.id} value={t.id}>{t.label}</option>)}
           </Select>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -47,8 +47,8 @@ function MonAbsence() {
           </div>
         </div>
         <div className="space-y-1">
-          <Label>Motif (optionnel)</Label>
-          <Input value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
+          <Label>Commentaire (optionnel)</Label>
+          <Input value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} />
         </div>
         <div className="flex justify-end">
           <Button onClick={() => soumettre.mutate()} disabled={soumettre.isPending}>Soumettre</Button>
@@ -61,12 +61,13 @@ function MonAbsence() {
 
 function MesFrais() {
   const qc = useQueryClient();
-  const [form, setForm] = useState({ title: "", period: "" });
+  const { profil } = useAuth();
+  const [form, setForm] = useState({ title: "" });
   const soumettre = useMutation<any, unknown, void>({
-    mutationFn: () => api.post("expenses/reports/", { ...form }),
+    mutationFn: () => api.post("expenses/reports/", { ...form, employee: profil?.employee_id }),
     onSuccess: () => {
       toast.success("Note de frais préparée — ajoutez des lignes puis soumettez.");
-      setForm({ title: "", period: "" });
+      setForm({ title: "" });
       qc.invalidateQueries({ queryKey: ["portail-frais"] });
     },
     onError: notifierErreur,
@@ -78,10 +79,6 @@ function MesFrais() {
         <div className="space-y-1">
           <Label>Intitulé</Label>
           <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Déplacement client Lyon…" />
-        </div>
-        <div className="space-y-1">
-          <Label>Période</Label>
-          <Input value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })} placeholder="10/2026" />
         </div>
         <div className="flex justify-end">
           <Button onClick={() => soumettre.mutate()} disabled={soumettre.isPending}>Créer la note</Button>

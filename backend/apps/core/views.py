@@ -134,10 +134,14 @@ class AuditLogView(APIView):
     def get(self, request):
         from rest_framework import serializers as drf_serializers
 
-        qs = AuditLog.objects.filter(company=request.company).select_related("user")[:500]
+        qs = AuditLog.objects.filter(company=request.company).select_related("user")
         sensibilite = request.query_params.get("sensitivity")
         if sensibilite:
             qs = qs.filter(sensitivity=sensibilite)
+        chemin = request.query_params.get("path")
+        if chemin:
+            qs = qs.filter(path__icontains=chemin)
+        qs = qs[:500]
 
         class S(drf_serializers.ModelSerializer):
             user_email = drf_serializers.EmailField(source="user.email", read_only=True)

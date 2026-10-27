@@ -6,9 +6,8 @@ import { Alerte } from "@/components/ui/modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input, Label, Select, Textarea } from "@/components/ui/input";
+import { Label, Textarea } from "@/components/ui/input";
 import { Tabs } from "@/components/ui/tabs";
-import { toast } from "sonner";
 import { Bot, SendHorizontal } from "lucide-react";
 
 function Assistant() {
@@ -18,9 +17,10 @@ function Assistant() {
     queryKey: ["ai-status"],
     queryFn: async () => (await api.get("ai/status/")).data,
   });
+  const actif = Boolean(status?.ia_disponible);
   const poser = useMutation<any, unknown, void>({
-    mutationFn: () => api.post("ai/assist/", { question }),
-    onSuccess: (res) => setReponse(res.data?.answer ?? res.data?.response ?? JSON.stringify(res.data, null, 2)),
+    mutationFn: () => api.post("ai/assist/", { action: "recherche_nl", data: { question } }),
+    onSuccess: (res) => setReponse(res.data?.reponse ?? JSON.stringify(res.data, null, 2)),
     onError: notifierErreur,
   });
 
@@ -30,8 +30,8 @@ function Assistant() {
         <CardTitle className="flex items-center gap-2 text-base">
           <Bot className="h-5 w-5" /> Assistant interne
           {status && (
-            <Badge variant={status.enabled ? "success" : "muted"}>
-              {status.enabled ? `Actif (${status.provider})` : "Désactivé"}
+            <Badge variant={actif ? "success" : "muted"}>
+              {actif ? "Actif" : "Désactivé"}
             </Badge>
           )}
         </CardTitle>
@@ -42,19 +42,19 @@ function Assistant() {
           Il ne décide jamais seul des virements, de la paie, des dividendes ni des déclarations.
           Clé API hébergée côté serveur (jamais exposée au navigateur, ni dans le code, ni dans les logs).
         </Alerte>
-        {status && !status.enabled && (
+        {status && !actif && (
           <Alerte variante="info">
             L'IA est actuellement désactivée pour votre entreprise. Activez un fournisseur dans l'onglet « Fournisseurs ».
             Le reste de l'application fonctionne intégralement sans IA.
           </Alerte>
         )}
         <div className="space-y-1">
-          <Label htmlFor="question">Votre question</Label>
+          <Label htmlFor="question">Votre question (indicateurs agrégés autorisés)</Label>
           <Textarea id="question" value={question} onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ex. Résume les étapes de clôture de la paie de ce mois…" />
+            placeholder="Ex. Quel est le MRR actuel et le montant des factures impayées ?" />
         </div>
         <div className="flex justify-end">
-          <Button onClick={() => poser.mutate()} disabled={!question || poser.isPending || (status && !status.enabled)}>
+          <Button onClick={() => poser.mutate()} disabled={!question || poser.isPending || !actif}>
             <SendHorizontal className="h-4 w-4" /> {poser.isPending ? "Envoi…" : "Envoyer"}
           </Button>
         </div>
@@ -70,11 +70,11 @@ function Fournisseurs() {
   return (
     <ResourcePage
       titre="Fournisseurs IA"
-      description="Ollama local par défaut ; CodeCraftAPI (https://codecraftapi.com/v1) disponible. Les clés restent chiffrées côté serveur."
+      description="Un seul fournisseur par type. Les clés restent chiffrées côté serveur (jamais renvoyées au navigateur)."
       endpoint="ai/providers/"
       colonnes={[
-        { key: "name", label: "Nom" },
-        { key: "provider_type", label: "Type" },
+        { key: "label", label: "Nom" },
+        { key: "kind_label", label: "Type" },
         { key: "base_url", label: "URL de base" },
         { key: "default_model", label: "Modèle" },
         {
@@ -83,14 +83,19 @@ function Fournisseurs() {
         },
       ]}
       champs={[
-        { name: "name", label: "Nom", required: true },
-        { name: "provider_type", label: "Type", type: "select", required: true, options: [
-          { value: "ollama", label: "Ollama (local, par défaut)" },
-          { value: "codecraft", label: "CodeCraftAPI" },
+        { name: "label", label: "Nom", required: true },
+        { name: "kind", label: "Type", type: "select", required: true, options: [
+          { value: "ollama", label: "Ollama (local)" },
+          { value: "codecraftapi", label: "CodeCraftAPI" },
+          { value: "openai_compatible", label: "Compatible OpenAI (auto-hébergé)" },
         ]},
         { name: "base_url", label: "URL de base (ex. http://localhost:11434 ou https://codecraftapi.com/v1)" },
         { name: "default_model", label: "Modèle par défaut (aucun identifiant codé en dur)" },
-        { name: "api_key", label: "Clé API (chiffrée côté serveur)", type: "password" },
+        { name: "api_key", label: "Clé API (chiffrée côté serveur)", type: "password", hideOnEdit: true },
+        {
+          name: "is_enabled", label: "Activé", type: "select",
+          options: [{ value: "true", label: "Activé" }, { value: "false", label: "Désactivé" }],
+        },
       ]}
     />
   );

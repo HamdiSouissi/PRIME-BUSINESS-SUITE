@@ -66,7 +66,7 @@ def _default_inputs(employee, contract, params) -> dict:
 
 def verifier_donnees_cycle(run: PayrollRun) -> list[str]:
     """Contrôle des données manquantes avant simulation (étape 2)."""
-    from apps.hr.models import ContractStatus, Employee
+    from apps.hr.models import Employee
 
     anomalies = []
     if not Employee.objects.filter(company=run.company, status="actif").exists():
@@ -107,7 +107,7 @@ def generer_simulation(run: PayrollRun, user) -> list[Payslip]:
         )
 
     bulletins = []
-    from apps.hr.models import ContractStatus, Employee
+    from apps.hr.models import Employee
 
     employes = Employee.objects.filter(company=run.company, status="actif").prefetch_related("contrats")
     for employee in employes:

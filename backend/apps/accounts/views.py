@@ -85,6 +85,7 @@ class MeView(APIView):
         serializer = UserSerializer(request.user)
         memberships = MembershipSerializer(request.user.memberships.filter(is_active=True), many=True)
         company = getattr(request, "company", None)
+        employee_profile = getattr(request.user, "employee_profile", None)
         return Response(
             {
                 "user": serializer.data,
@@ -92,6 +93,7 @@ class MeView(APIView):
                 "active_company": company.id if company else None,
                 "active_company_name": company.name if company else "",
                 "role": user_role(request),
+                "employee_id": employee_profile.id if employee_profile else None,
             }
         )
 

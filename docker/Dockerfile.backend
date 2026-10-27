@@ -24,5 +24,10 @@ USER pbs
 
 EXPOSE 8000
 
+# Sonde de santé : l'API répond-elle vraiment (migrations passées, DB joignable) ?
+# Pas de curl dans l'image slim : urllib (bibliothèque standard) suffit.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=40s --retries=5 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health/', timeout=4).status == 200 else 1)"
+
 # Lancement : migrations (+ données de démo si DEMO_SEED=1) puis serveur WSGI
 CMD ["sh", "-c", "python manage.py migrate && { [ \"${DEMO_SEED:-0}\" = \"1\" ] && python manage.py seed_demo || true; } && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"]

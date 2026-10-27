@@ -14,22 +14,28 @@ function Modeles() {
       endpoint="contracts/templates/"
       colonnes={[
         { key: "name", label: "Nom" },
-        { key: "category", label: "Catégorie" },
+        { key: "type_label", label: "Type" },
         {
-          key: "is_active", label: "Actif",
-          render: (t: any) => <Badge variant={t.is_active ? "success" : "muted"}>{t.is_active ? "Oui" : "Non"}</Badge>,
+          key: "status", label: "Statut",
+          render: (t: any) => <Badge variant={t.status === "valide" ? "success" : t.status === "archive" ? "muted" : "warning"}>{t.status_label ?? t.status}</Badge>,
         },
       ]}
       champs={[
         { name: "name", label: "Nom du modèle", required: true },
-        { name: "category", label: "Catégorie", type: "select", options: [
+        { name: "template_type", label: "Type de modèle", type: "select", options: [
           { value: "contrat_travail", label: "Contrat de travail" },
           { value: "avenant", label: "Avenant" },
-          { value: "attestation", label: "Attestation" },
+          { value: "embauche", label: "Document d'embauche" },
+          { value: "fin_contrat", label: "Document de fin de contrat" },
+          { value: "prestation", label: "Contrat de prestation" },
+          { value: "maintenance", label: "Contrat de maintenance" },
+          { value: "abonnement", label: "Contrat d'abonnement" },
+          { value: "cgv", label: "Conditions commerciales" },
+          { value: "pv", label: "Procès-verbal / décision sociale" },
           { value: "autre", label: "Autre" },
         ], required: true },
-        { name: "description", label: "Description", type: "textarea" },
         { name: "content", label: "Contenu (variables entre accolades)", type: "textarea", required: true },
+        { name: "legal_review_note", label: "Note de revue juridique", type: "textarea" },
       ]}
     />
   );
@@ -51,7 +57,7 @@ function Documents() {
         {(data ?? []).map((docu: any) => (
           <div key={docu.id} className="flex items-center justify-between rounded border p-2 text-sm">
             <div>
-              <p className="font-medium">{docu.name}</p>
+              <p className="font-medium">{docu.label}</p>
               <p className="text-xs text-muted-foreground">Modèle {docu.template_name} — {docu.created_at ? new Date(docu.created_at).toLocaleString("fr-FR") : ""}</p>
             </div>
             <Badge variant="muted">{docu.format ?? "DOCX"}</Badge>

@@ -16,7 +16,7 @@ function Balance() {
     queryKey: ["balance"],
     queryFn: async () => (await api.get("accounting/entries/balance/")).data,
   });
-  const lignes = data?.lignes ?? data ?? [];
+  const lignes = data?.balance ?? data?.lignes ?? [];
   return (
     <Card>
       <CardHeader><CardTitle className="text-base">Balance des comptes</CardTitle></CardHeader>
@@ -25,7 +25,7 @@ function Balance() {
           <THead><Tr><Th>Compte</Th><Th>Libellé</Th><Th className="text-right">Débit</Th><Th className="text-right">Crédit</Th></Tr></THead>
           <TBody>
             {lignes.map((l: any, i: number) => (
-              <Tr key={i}><Td className="font-mono">{l.code ?? l.account_code}</Td><Td>{l.label ?? l.account_label}</Td>
+              <Tr key={i}><Td className="font-mono">{l.number ?? l.code}</Td><Td>{l.label}</Td>
                 <Td className="text-right">{fmtEuro(l.debit)}</Td><Td className="text-right">{fmtEuro(l.credit)}</Td></Tr>
             ))}
           </TBody>
@@ -53,26 +53,25 @@ function Ecritures() {
       description="Une fois validée, une écriture devient immuable : la correction se fait par contre-écriture."
       endpoint="accounting/entries/"
       colonnes={[
-        { key: "entry_number", label: "N°" }, { key: "date", label: "Date" },
+        { key: "id", label: "N°" }, { key: "date", label: "Date" },
         { key: "journal_code", label: "Journal" }, { key: "label", label: "Libellé" },
         { key: "total_debit", label: "Débit" }, { key: "total_credit", label: "Crédit" },
-        { key: "status", label: "Statut", render: (e: any) => <Badge variant={e.status === "validee" ? "success" : "warning"}>{e.status}</Badge> },
+        { key: "status", label: "Statut", render: (e: any) => <Badge variant={e.status === "validee" ? "success" : e.status === "contre_passee" ? "muted" : "warning"}>{e.status_label ?? e.status}</Badge> },
       ]}
       champs={[
         { name: "journal", label: "Journal", type: "select", optionsUrl: "accounting/journals/", required: true },
         { name: "date", label: "Date", type: "date", required: true },
         { name: "label", label: "Libellé", required: true },
-        { name: "reference", label: "Référence pièce" },
       ]}
-      actions={(e: any) => e.status !== "validee" ? (
+      actions={(e: any) => e.status === "brouillon" ? (
         <Button size="icon" variant="ghost" title="Valider" onClick={() => agir.mutate({ id: e.id, act: "valider" })}>
           <CheckCircle2 className="h-4 w-4 text-emerald-600" />
         </Button>
-      ) : (
+      ) : e.status === "validee" ? (
         <Button size="icon" variant="ghost" title="Contre-passer" onClick={() => agir.mutate({ id: e.id, act: "contre-passer" })}>
           <Undo2 className="h-4 w-4" />
         </Button>
-      )}
+      ) : null}
     />
   );
 }
@@ -94,15 +93,23 @@ function PlanComptable() {
         description="Configurable par entreprise. Rien n'est imposé par le code."
         endpoint="accounting/accounts/"
         colonnes={[
-          { key: "code", label: "Code", render: (a: any) => <span className="font-mono">{a.code}</span> },
+          { key: "number", label: "Numéro", render: (a: any) => <span className="font-mono">{a.number}</span> },
           { key: "label", label: "Libellé" },
-          { key: "account_type", label: "Classe" },
+          { key: "account_class", label: "Classe" },
+          { key: "account_type", label: "Type" },
           { key: "is_active", label: "Actif", render: (a: any) => <Badge variant={a.is_active ? "success" : "muted"}>{a.is_active ? "Oui" : "Non"}</Badge> },
         ]}
         champs={[
-          { name: "code", label: "Code", required: true },
+          { name: "number", label: "Numéro de compte", required: true },
           { name: "label", label: "Libellé", required: true },
-          { name: "account_type", label: "Type (classe PCG)", required: true },
+          { name: "account_class", label: "Classe PCG (1-8)", required: true },
+          { name: "account_type", label: "Type de compte", type: "select", options: [
+            { value: "general", label: "Compte général" },
+            { value: "client", label: "Auxiliaire client" },
+            { value: "fournisseur", label: "Auxiliaire fournisseur" },
+            { value: "banque", label: "Bancaire" },
+            { value: "caisse", label: "Caisse" },
+          ]},
         ]}
       />
     </div>
@@ -122,13 +129,11 @@ function Exercices() {
       titre="Exercices comptables"
       endpoint="accounting/fiscal-years/"
       colonnes={[
-        { key: "name", label: "Exercice" },
         { key: "start_date", label: "Début" },
         { key: "end_date", label: "Fin" },
         { key: "status", label: "Statut", render: (y: any) => <Badge variant={y.status === "cloture" ? "muted" : y.status === "verrouille" ? "warning" : "success"}>{y.status}</Badge> },
       ]}
       champs={[
-        { name: "name", label: "Libellé (ex. Exercice 2026)", required: true },
         { name: "start_date", label: "Début", type: "date", required: true },
         { name: "end_date", label: "Fin", type: "date", required: true },
       ]}

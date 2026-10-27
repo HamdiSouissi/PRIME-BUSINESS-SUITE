@@ -39,7 +39,7 @@ export default function AuditPage() {
               <TBody>
                 {(data ?? []).map((l: any) => (
                   <Tr key={l.id}>
-                    <Td className="whitespace-nowrap text-xs">{l.created_at ? new Date(l.created_at).toLocaleString("fr-FR") : "—"}</Td>
+                    <Td className="whitespace-nowrap text-xs">{l.occurred_at ? new Date(l.occurred_at).toLocaleString("fr-FR") : "—"}</Td>
                     <Td className="text-xs">{l.user_email ?? "—"}</Td>
                     <Td><Badge variant={METHODES[l.method] ?? "muted"}>{l.method}</Badge></Td>
                     <Td className="font-mono text-xs">{l.path}</Td>

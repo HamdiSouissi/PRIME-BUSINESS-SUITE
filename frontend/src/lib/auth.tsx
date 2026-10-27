@@ -13,6 +13,7 @@ interface Profil {
   role: string | null;
   active_company: number | null;
   active_company_name: string;
+  employee_id?: number | null;
   memberships: Array<{ company: number; company_name: string; role: string; role_label: string }>;
 }
 

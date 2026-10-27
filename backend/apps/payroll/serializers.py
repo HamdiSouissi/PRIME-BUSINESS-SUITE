@@ -90,6 +90,8 @@ class PayslipDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payslip
         fields = "__all__"
+        # Injecté par le ViewSet/les tâches de paie ; jamais fourni par le client.
+        read_only_fields = ("company",)
 
     def get_period(self, obj):
         return f"{obj.run.month:02d}/{obj.run.year}"
